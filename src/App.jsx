@@ -12,8 +12,9 @@ import { collegesData } from "./components/collegeData";
 
 export default function App() {
     const [selectedCollegeId, setSelectedCollegeId] = useState(null);
+    const [reviewsOnly, setReviewsOnly] = useState(false);
     const [showCounsellingForm, setShowCounsellingForm] = useState(false);
-    const [user, setUser] = useState(null); // Global user state: { username, role, college_id, ... }
+    const [user, setUser] = useState(null);
 
     useEffect(() => {
         const storedUser = localStorage.getItem('user');
@@ -25,11 +26,13 @@ export default function App() {
 
     const handleCollegeClick = (collegeId) => {
         setSelectedCollegeId(collegeId);
+        setReviewsOnly(false);
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     const handleBackToHome = () => {
         setSelectedCollegeId(null);
+        setReviewsOnly(false);
         setShowCounsellingForm(false);
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
@@ -53,7 +56,20 @@ export default function App() {
         localStorage.removeItem('user');
         setUser(null);
         setSelectedCollegeId(null);
+        setReviewsOnly(false);
         setShowCounsellingForm(false);
+    };
+
+    const handleVerifiedReviewsClick = () => {
+        if (user && user.college_id) {
+            setSelectedCollegeId(user.college_id);
+            setReviewsOnly(true);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else if (user) {
+            alert("Please update your profile to select your college first.");
+        } else {
+            alert("Please login or create a student account to read verified reviews.");
+        }
     };
 
     // Routing Logic
@@ -72,11 +88,11 @@ export default function App() {
             {showCounsellingForm ? (
                 <CounsellingForm onBack={handleBackFromCounselling} />
             ) : selectedCollegeId ? (
-                <CollegeDetail collegeId={selectedCollegeId} onBack={handleBackToHome} user={user} onLogin={handleLogin} />
+                <CollegeDetail collegeId={selectedCollegeId} onBack={handleBackToHome} user={user} onLogin={handleLogin} reviewsOnly={reviewsOnly} />
             ) : (
                 <>
                     <HeroSection onGetCounselling={handleGetCounselling} />
-                    <BrowseSection />
+                    <BrowseSection onVerifiedReviewsClick={handleVerifiedReviewsClick} />
                     <TopColleges onCollegeClick={handleCollegeClick} />
                 </>
             )}

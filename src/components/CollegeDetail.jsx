@@ -20,12 +20,60 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Textarea } from "./ui/textarea";
 import { Input } from "./ui/input";
 
-export function CollegeDetail({ collegeId, onBack, user, onLogin }) {
+export function CollegeDetail({ collegeId, onBack, user, onLogin, reviewsOnly }) {
   const [college, setCollege] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("info");
+  const [activeTab, setActiveTab] = useState(reviewsOnly ? "reviews" : "info");
   const [expandedComments, setExpandedComments] = useState({});
-  const [isWriteReviewOpen, setIsWriteReviewOpen] = useState(false);
+  const [reactions, setReactions] = useState({});
+
+  useEffect(() => {
+    if (reviewsOnly) {
+      setActiveTab("reviews");
+    }
+  }, [reviewsOnly]);
+
+  const handleReaction = (reviewId, type) => {
+    setReactions(prev => {
+      const currentReaction = prev[reviewId];
+      let newReaction;
+      let likesDelta = 0;
+      let dislikesDelta = 0;
+
+      if (currentReaction === type) {
+        newReaction = null;
+        if (type === 'like') likesDelta = -1;
+        if (type === 'dislike') dislikesDelta = -1;
+      } else {
+        newReaction = type;
+        if (type === 'like') {
+          likesDelta = 1;
+          if (currentReaction === 'dislike') dislikesDelta = -1;
+        } else if (type === 'dislike') {
+          dislikesDelta = 1;
+          if (currentReaction === 'like') likesDelta = -1;
+        }
+      }
+
+      setCollege(prevCollege => {
+        if (!prevCollege) return prevCollege;
+        const updatedReviews = prevCollege.reviews.map(r => {
+          if (r.id === reviewId) {
+            return {
+              ...r,
+              likes: r.likes + likesDelta,
+              dislikes: r.dislikes + dislikesDelta
+            };
+          }
+          return r;
+        });
+        return { ...prevCollege, reviews: updatedReviews };
+      });
+
+      return { ...prev, [reviewId]: newReaction };
+    });
+  };
+
   const [galleryData, setGalleryData] = useState([]);
   const [galleryFilter, setGalleryFilter] = useState('all');
   const [showRegisterModal, setShowRegisterModal] = useState(false);
@@ -100,10 +148,7 @@ export function CollegeDetail({ collegeId, onBack, user, onLogin }) {
     fetchGallery();
   }, [collegeId]);
 
-  const [reviewRating, setReviewRating] = useState(0);
-  const [reviewText, setReviewText] = useState("");
-  const [reviewCourse, setReviewCourse] = useState("");
-  const [isAnonymousReview, setIsAnonymousReview] = useState(false);
+  // Fetch gallery data
 
   // Check if user is logged in and registered for THIS specific college
   const isLoggedIn = !!user;
@@ -273,18 +318,7 @@ export function CollegeDetail({ collegeId, onBack, user, onLogin }) {
                     </div>
 
                     {/* Action Button */}
-                    {isRegisteredForThisCollege ? (
-                      <Button
-                        onClick={() => {
-                          setActiveTab("reviews");
-                          setIsWriteReviewOpen(true);
-                        }}
-                        className="bg-yellow-400 text-black hover:bg-yellow-500 gap-2 w-full"
-                      >
-                        <Plus className="w-4 h-4" />
-                        Write Review
-                      </Button>
-                    ) : !isLoggedIn ? (
+                    {!isLoggedIn ? (
                       <div className="w-full flex flex-col gap-2">
                         <Button 
                           onClick={() => setShowRegisterModal(true)}
@@ -308,6 +342,7 @@ export function CollegeDetail({ collegeId, onBack, user, onLogin }) {
       {/* Navigation Tabs and Content */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         {/* Navigation Tabs */}
+        {!reviewsOnly && (
         <div className="bg-white border-b sticky top-0 z-10">
           <div className="container mx-auto px-6">
             <TabsList className="w-full justify-start h-auto p-0 bg-transparent rounded-none border-b-0">
@@ -350,6 +385,7 @@ export function CollegeDetail({ collegeId, onBack, user, onLogin }) {
             </TabsList>
           </div>
         </div>
+        )}
 
         {/* Main Content */}
         <div className="container mx-auto px-6 py-8">
@@ -695,32 +731,14 @@ export function CollegeDetail({ collegeId, onBack, user, onLogin }) {
                     </div>
                   </div>
 
-                  {/* Write Review Button - Only for registered students */}
-                  {isRegisteredForThisCollege ? (
-                    <div className="mb-8 p-6 bg-blue-50 border-2 border-blue-200 rounded-lg">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h4 className="text-blue-900 mb-1">Share Your Experience</h4>
-                          <p className="text-sm text-gray-600">
-                            As a registered student of {college.name}, you can write a review
-                          </p>
-                        </div>
-                        <Button
-                          onClick={() => setIsWriteReviewOpen(true)}
-                          className="bg-yellow-400 text-black hover:bg-yellow-500 gap-2"
-                        >
-                          <Plus className="w-4 h-4" />
-                          Write Review
-                        </Button>
-                      </div>
-                    </div>
-                  ) : !isLoggedIn ? (
+                  {/* Create Account Prompt for Guests */}
+                  {!isLoggedIn ? (
                     <div className="mb-8 p-6 bg-gray-50 border border-gray-200 rounded-lg">
                       <div className="flex items-center justify-between">
                         <div>
                           <h4 className="text-gray-900 mb-1">Verify Your Student Status</h4>
                           <p className="text-sm text-gray-600">
-                            Create a student account for {college.name} to write reviews and unlock features.
+                            Create a student account for {college.name} to unlock all features.
                           </p>
                         </div>
                         <div className="flex flex-col items-end gap-2">
@@ -789,13 +807,19 @@ export function CollegeDetail({ collegeId, onBack, user, onLogin }) {
 
                               {/* Like/Dislike Section */}
                               <div className="flex flex-col gap-2">
-                                <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-green-50 transition-colors group">
-                                  <ThumbsUp className="w-4 h-4 text-gray-600 group-hover:text-green-600" />
-                                  <span className="text-sm text-gray-700 group-hover:text-green-600">{review.likes}</span>
+                                <button 
+                                  onClick={() => handleReaction(review.id, 'like')}
+                                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors group ${reactions[review.id] === 'like' ? 'bg-green-50' : 'hover:bg-green-50'}`}
+                                >
+                                  <ThumbsUp className={`w-4 h-4 ${reactions[review.id] === 'like' ? 'text-green-600 fill-green-600' : 'text-gray-600 group-hover:text-green-600'}`} />
+                                  <span className={`text-sm ${reactions[review.id] === 'like' ? 'text-green-600' : 'text-gray-700 group-hover:text-green-600'}`}>{review.likes}</span>
                                 </button>
-                                <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-red-50 transition-colors group">
-                                  <ThumbsDown className="w-4 h-4 text-gray-600 group-hover:text-red-600" />
-                                  <span className="text-sm text-gray-700 group-hover:text-red-600">{review.dislikes}</span>
+                                <button 
+                                  onClick={() => handleReaction(review.id, 'dislike')}
+                                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors group ${reactions[review.id] === 'dislike' ? 'bg-red-50' : 'hover:bg-red-50'}`}
+                                >
+                                  <ThumbsDown className={`w-4 h-4 ${reactions[review.id] === 'dislike' ? 'text-red-600 fill-red-600' : 'text-gray-600 group-hover:text-red-600'}`} />
+                                  <span className={`text-sm ${reactions[review.id] === 'dislike' ? 'text-red-600' : 'text-gray-700 group-hover:text-red-600'}`}>{review.dislikes}</span>
                                 </button>
                               </div>
                             </div>
@@ -810,24 +834,29 @@ export function CollegeDetail({ collegeId, onBack, user, onLogin }) {
                             {/* Footer - Comments */}
                             <div className="pl-16">
                               <div className="pt-4 border-t">
-                                <button
-                                  onClick={() => toggleComments(review.id)}
-                                  className="flex items-center gap-2 text-blue-600 hover:text-blue-700 transition-colors"
-                                >
-                                  {expandedComments[review.id] ? (
-                                    <ChevronUp className="w-4 h-4" />
-                                  ) : (
+                                {review.comments > 0 ? (
+                                  <button
+                                    onClick={() => toggleComments(review.id)}
+                                    className="flex items-center gap-2 text-blue-600 hover:text-blue-700 transition-colors"
+                                  >
+                                    {expandedComments[review.id] ? (
+                                      <ChevronUp className="w-4 h-4" />
+                                    ) : (
+                                      <MessageCircle className="w-4 h-4" />
+                                    )}
+                                    <span className="text-sm">
+                                      {expandedComments[review.id]
+                                        ? 'Hide comments'
+                                        : `View ${review.comments} ${review.comments === 1 ? 'comment' : 'comments'}`
+                                      }
+                                    </span>
+                                  </button>
+                                ) : (
+                                  <div className="flex items-center gap-2 text-gray-400">
                                     <MessageCircle className="w-4 h-4" />
-                                  )}
-                                  <span className="text-sm">
-                                    {expandedComments[review.id]
-                                      ? 'Hide comments'
-                                      : review.comments > 0
-                                        ? `View ${review.comments} ${review.comments === 1 ? 'comment' : 'comments'}`
-                                        : 'Add a comment'
-                                    }
-                                  </span>
-                                </button>
+                                    <span className="text-sm">No comments</span>
+                                  </div>
+                                )}
                               </div>
 
                               {/* Comments List */}
@@ -981,158 +1010,6 @@ export function CollegeDetail({ collegeId, onBack, user, onLogin }) {
         </div>
       </Tabs>
 
-      {/* Write Review Dialog */}
-      <Dialog open={isWriteReviewOpen} onOpenChange={setIsWriteReviewOpen}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-xl">Write a Review for {college.name}</DialogTitle>
-            <DialogDescription>
-              Share your honest experience to help prospective students make informed decisions
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-6 mt-4">
-            {/* Rating */}
-            <div>
-              <label className="text-sm text-gray-700 mb-2 block">
-                Overall Rating <span className="text-red-500">*</span>
-              </label>
-              <div className="flex gap-2">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <button
-                    key={star}
-                    type="button"
-                    onClick={() => setReviewRating(star)}
-                    className="transition-transform hover:scale-110"
-                  >
-                    <Star
-                      className={`w-8 h-8 ${star <= reviewRating
-                        ? "fill-yellow-400 text-yellow-400"
-                        : "fill-gray-200 text-gray-200"
-                        }`}
-                    />
-                  </button>
-                ))}
-                <span className="ml-3 text-gray-600 self-center">
-                  {reviewRating > 0 ? `${reviewRating}/5` : "Select rating"}
-                </span>
-              </div>
-            </div>
-
-            {/* Course */}
-            <div>
-              <label className="text-sm text-gray-700 mb-2 block">
-                Course <span className="text-gray-400">(optional)</span>
-              </label>
-              <Input
-                type="text"
-                placeholder="e.g., B.Tech Computer Science"
-                value={reviewCourse}
-                onChange={(e) => setReviewCourse(e.target.value)}
-                className="w-full"
-              />
-            </div>
-
-            {/* Review Text */}
-            <div>
-              <label className="text-sm text-gray-700 mb-2 block">
-                Your Review <span className="text-red-500">*</span>
-              </label>
-              <Textarea
-                placeholder="Share your experience about academics, campus life, facilities, placements, etc..."
-                value={reviewText}
-                onChange={(e) => setReviewText(e.target.value)}
-                className="w-full min-h-[150px]"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Minimum 50 characters ({reviewText.length}/50)
-              </p>
-            </div>
-
-            {/* Anonymous Option */}
-            <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg">
-              <input
-                type="checkbox"
-                id="anonymous"
-                checked={isAnonymousReview}
-                onChange={(e) => setIsAnonymousReview(e.target.checked)}
-                className="mt-0.5 w-4 h-4 text-blue-600"
-              />
-              <div>
-                <label htmlFor="anonymous" className="text-sm text-gray-900 cursor-pointer">
-                  Post anonymously
-                </label>
-                <p className="text-xs text-gray-500 mt-1">
-                  Your identity will be hidden, but the review will still be marked as verified
-                </p>
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex gap-3 justify-end pt-4 border-t">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setIsWriteReviewOpen(false);
-                  setReviewRating(0);
-                  setReviewText("");
-                  setReviewCourse("");
-                  setIsAnonymousReview(false);
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={async () => {
-                  if (reviewRating > 0 && reviewText.length >= 50) {
-                    try {
-                      await reviewService.create({
-                        college: college.id,
-                        rating: reviewRating,
-                        text: reviewText,
-                        is_anonymous: isAnonymousReview
-                      });
-                      
-                      // Refresh reviews by refetching college details
-                      const updatedData = await collegeService.getDetail(college.id);
-                      setCollege(prev => ({
-                        ...prev,
-                        reviews: updatedData.reviews ? updatedData.reviews.map(r => ({
-                          id: r.id,
-                          studentName: r.user.username,
-                          isAnonymous: r.is_anonymous || false,
-                          rating: r.rating,
-                          date: new Date(r.created_at).toLocaleDateString(),
-                          reviewText: r.text,
-                          likes: 0,
-                          dislikes: 0,
-                          comments: r.comments ? r.comments.length : 0
-                        })) : []
-                      }));
-
-                      alert("Thank you! Your review has been submitted successfully.");
-                      setIsWriteReviewOpen(false);
-                      setReviewRating(0);
-                      setReviewText("");
-                      setReviewCourse("");
-                      setIsAnonymousReview(false);
-                    } catch (error) {
-                      console.error("Error submitting review:", error);
-                      alert(error.response?.data?.detail || "Failed to submit review. Try again later.");
-                    }
-                  } else {
-                    alert("Please provide a rating and write at least 50 characters.");
-                  }
-                }}
-                className="bg-blue-600 text-white hover:bg-blue-700"
-                disabled={reviewRating === 0 || reviewText.length < 50}
-              >
-                Submit Review
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
       
       {/* Student Register Modal */}
       <StudentRegisterModal

@@ -1,10 +1,10 @@
 import {
     CheckCircle,
     TrendingUp,
-    PenSquare,
+    Search,
 } from "lucide-react";
 
-export function BrowseSection() {
+export function BrowseSection({ onVerifiedReviewsClick }) {
     const features = [
         {
             icon: CheckCircle,
@@ -19,10 +19,10 @@ export function BrowseSection() {
             description: "Predict your best matches",
         },
         {
-            icon: PenSquare,
-            title: "Write Review for Your College",
+            icon: Search,
+            title: "Explore Colleges",
             color: "bg-yellow-500",
-            description: "Share your college experience",
+            description: "Find the best college for you",
         },
     ];
 
@@ -38,7 +38,8 @@ export function BrowseSection() {
                     return (
                         <div
                             key={index}
-                            className="bg-white border rounded-lg p-6 hover:shadow-lg transition-shadow"
+                            onClick={feature.title === "Verified Reviews" ? onVerifiedReviewsClick : undefined}
+                            className={`bg-white border rounded-lg p-6 hover:shadow-lg transition-shadow ${feature.title === "Verified Reviews" ? "cursor-pointer hover:border-green-300" : ""}`}
                         >
                             <div
                                 className={`${feature.color} w-12 h-12 rounded-lg flex items-center justify-center mb-4`}
