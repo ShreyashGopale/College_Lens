@@ -55,7 +55,5 @@ services:
       
     depends_on:
       - backend
-    env_file:
-      - .env
 volumes:
   mysql_data:
