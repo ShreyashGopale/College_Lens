@@ -13,6 +13,7 @@ export function TopColleges({ onCollegeClick }) {
         const fetchColleges = async () => {
             try {
                 const data = await collegeService.getAll();
+                console.log("API DATA:", data);
                 // Transform API data to match component expected structure
                 const transformed = data.map(c => ({
                     id: c.id,
