@@ -47,8 +47,8 @@ services:
 
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: Dockerfile.frontend
     container_name: college-lens-frontend
     ports:
       - "5173:80"
