@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: college-lens-db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: college_lens
+      MYSQL_USER: collegeuser
+      MYSQL_PASSWORD: collegepass123
+      MYSQL_ROOT_PASSWORD: rootpass123
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: college-lens-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DJANGO_SETTINGS_MODULE=college_review_backend.settings
+      - SECRET_KEY=your-secret-key-here
+      - DB_NAME=college_lens
+      - DB_USER=collegeuser
+      - DB_PASSWORD=collegepass123
+      - DB_HOST=db
+      - DB_PORT=3306
+      - ALLOWED_HOSTS=localhost,127.0.0.1
+      - DEBUG=0
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    command: >
+      sh -c "python manage.py migrate &&
+             gunicorn --bind 0.0.0.0:8000 college_review_backend.wsgi:application"
+
+volumes:
+  mysql_data:
