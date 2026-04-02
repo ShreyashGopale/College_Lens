@@ -52,8 +52,10 @@ services:
     container_name: college-lens-frontend
     ports:
       - "5173:80"
+      
     depends_on:
       - backend
-
+    env_file:
+      - .env
 volumes:
   mysql_data:
