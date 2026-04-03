@@ -5,14 +5,14 @@ import { BrowseSection } from "./components/BrowseSection";
 import { TopColleges } from "./components/TopColleges";
 import { CollegeDetail } from "./components/CollegeDetail";
 import { CounsellingForm } from "./components/CounsellingForm";
-
 import { CollegeDashboard } from "./components/CollegeDashboard";
 import { collegesData } from "./components/collegeData";
 
-
 export default function App() {
     const [selectedCollegeId, setSelectedCollegeId] = useState(null);
-    const [reviewsOnly, setReviewsOnly] = useState(false);
+    const [reviewsOnly, setReviewsOnly] = useState(false); // ✅ your feature
+    const [viewingDashboard, setViewingDashboard] = useState(false); // ✅ friend feature
+    const [collegeDetailInitialTab, setCollegeDetailInitialTab] = useState("info"); // ✅ friend feature
     const [showCounsellingForm, setShowCounsellingForm] = useState(false);
     const [user, setUser] = useState(null);
 
@@ -27,6 +27,13 @@ export default function App() {
     const handleCollegeClick = (collegeId) => {
         setSelectedCollegeId(collegeId);
         setReviewsOnly(false);
+        setCollegeDetailInitialTab("info");
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const handleWriteReviewClick = (collegeId) => {
+        setSelectedCollegeId(collegeId);
+        setCollegeDetailInitialTab("reviews");
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
@@ -64,6 +71,7 @@ export default function App() {
         if (user && user.college_id) {
             setSelectedCollegeId(user.college_id);
             setReviewsOnly(true);
+            setCollegeDetailInitialTab("reviews");
             window.scrollTo({ top: 0, behavior: 'smooth' });
         } else if (user) {
             alert("Please update your profile to select your college first.");
@@ -73,8 +81,8 @@ export default function App() {
     };
 
     // Routing Logic
-    if (user?.role === 'college_admin') {
-        return <CollegeDashboard user={user} onLogout={handleLogout} />;
+    if (user?.role === 'college_admin' && viewingDashboard) {
+        return <CollegeDashboard user={user} onLogout={handleLogout} onGoHome={() => setViewingDashboard(false)} />;
     }
 
     return (
@@ -84,11 +92,20 @@ export default function App() {
                 user={user}
                 onLogin={handleLogin}
                 onLogout={handleLogout}
+                onWriteReviewClick={handleWriteReviewClick}
+                onDashboardClick={() => setViewingDashboard(true)}
             />
             {showCounsellingForm ? (
                 <CounsellingForm onBack={handleBackFromCounselling} />
             ) : selectedCollegeId ? (
-                <CollegeDetail collegeId={selectedCollegeId} onBack={handleBackToHome} user={user} onLogin={handleLogin} reviewsOnly={reviewsOnly} />
+                <CollegeDetail 
+                    collegeId={selectedCollegeId} 
+                    onBack={handleBackToHome} 
+                    user={user} 
+                    onLogin={handleLogin} 
+                    reviewsOnly={reviewsOnly}
+                    initialTab={collegeDetailInitialTab}
+                />
             ) : (
                 <>
                     <HeroSection onGetCounselling={handleGetCounselling} />
@@ -99,4 +116,3 @@ export default function App() {
         </div>
     );
 }
-

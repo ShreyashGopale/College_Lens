@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Create axios instance with base URL
 const api = axios.create({
-    baseURL: 'http://127.0.0.1:8000/api/',
+    baseURL: 'http://43.205.119.74:8000/api/',
     headers: {
         'Content-Type': 'application/json',
     },
@@ -140,6 +140,21 @@ export const galleryService = {
 
     delete: async (id) => {
         const response = await api.delete(`colleges/gallery/${id}/`);
+        return response.data;
+    }
+};
+
+export const cutoffService = {
+    create: async (data) => {
+        const response = await api.post('colleges/cutoffs/', data);
+        return response.data;
+    },
+    update: async (id, data) => {
+        const response = await api.patch(`colleges/cutoffs/${id}/`, data);
+        return response.data;
+    },
+    delete: async (id) => {
+        const response = await api.delete(`colleges/cutoffs/${id}/`);
         return response.data;
     }
 };

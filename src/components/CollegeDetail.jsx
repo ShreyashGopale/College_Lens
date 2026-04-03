@@ -20,13 +20,26 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Textarea } from "./ui/textarea";
 import { Input } from "./ui/input";
 
-export function CollegeDetail({ collegeId, onBack, user, onLogin, reviewsOnly }) {
+export function CollegeDetail({ collegeId, onBack, user, onLogin, reviewsOnly, initialTab = "info" }) {
   const [college, setCollege] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState(reviewsOnly ? "reviews" : "info");
+
+  // merged logic
+  const [activeTab, setActiveTab] = useState(
+    reviewsOnly ? "reviews" : initialTab
+  );
+
+  useEffect(() => {
+    if (reviewsOnly) {
+      setActiveTab("reviews");
+    } else {
+      setActiveTab(initialTab);
+    }
+  }, [collegeId, reviewsOnly, initialTab]);
+
   const [expandedComments, setExpandedComments] = useState({});
   const [reactions, setReactions] = useState({});
-
+}
   useEffect(() => {
     if (reviewsOnly) {
       setActiveTab("reviews");
@@ -116,9 +129,10 @@ export function CollegeDetail({ collegeId, onBack, user, onLogin, reviewsOnly })
           // Placeholders for missing data
           vision: data.description || "Vision statement not available.",
           mission: "Mission statement not available.",
-          hostelAvailable: false,
-          busAvailable: false,
-          cutoffs: [],
+          hostelAvailable: data.hostel_available || false,
+          hostelFees: data.hostel_fees || "",
+          busAvailable: data.bus_available || false,
+          cutoffs: data.cutoffs || [],
           placements: []
         };
         setCollege(transformed);
@@ -540,6 +554,9 @@ export function CollegeDetail({ collegeId, onBack, user, onLogin, reviewsOnly })
                           {college.busAvailable ? "Yes" : "No"}
                         </span>
                       </p>
+                      {college.busAvailable && (
+                        <p className="text-sm text-gray-500 mt-2">Bus fees depends on route</p>
+                      )}
                     </div>
 
                     {/* Additional Facilities */}
@@ -592,6 +609,20 @@ export function CollegeDetail({ collegeId, onBack, user, onLogin, reviewsOnly })
                         {/* Group cutoffs by course */}
                         {Array.from(new Set(college.cutoffs.map(c => c.course))).map(courseName => {
                           const courseCutoffs = college.cutoffs?.filter(c => c.course === courseName) || [];
+                          
+                          // Pivot logic to group by year and flatten caste scores
+                          const years = Array.from(new Set(courseCutoffs.map(c => c.year))).sort((a, b) => b - a);
+                          const pivotedData = years.map(year => {
+                              const yearData = courseCutoffs.filter(c => c.year === year);
+                              return {
+                                  year,
+                                  general: yearData.find(c => c.caste === 'General')?.score || '-',
+                                  obc: yearData.find(c => c.caste === 'OBC')?.score || '-',
+                                  sc: yearData.find(c => c.caste === 'SC')?.score || '-',
+                                  st: yearData.find(c => c.caste === 'ST')?.score || '-',
+                              };
+                          });
+
                           return (
                             <div key={courseName} className="border-l-4 border-blue-600 pl-6 py-2">
                               <h4 className="text-xl text-blue-900 mb-4">{courseName}</h4>
@@ -607,13 +638,13 @@ export function CollegeDetail({ collegeId, onBack, user, onLogin, reviewsOnly })
                                     </tr>
                                   </thead>
                                   <tbody>
-                                    {[...courseCutoffs].sort((a, b) => b.year - a.year).map((cutoff, index) => (
+                                    {pivotedData.map((row, index) => (
                                       <tr key={index} className={index % 2 === 0 ? "bg-blue-50" : "bg-white"}>
-                                        <td className="p-3 text-blue-900">{cutoff.year}</td>
-                                        <td className="p-3 text-center text-gray-700">{cutoff.general}</td>
-                                        <td className="p-3 text-center text-gray-700">{cutoff.obc}</td>
-                                        <td className="p-3 text-center text-gray-700">{cutoff.sc}</td>
-                                        <td className="p-3 text-center text-gray-700">{cutoff.st}</td>
+                                        <td className="p-3 text-blue-900">{row.year}</td>
+                                        <td className="p-3 text-center text-gray-700">{row.general}</td>
+                                        <td className="p-3 text-center text-gray-700">{row.obc}</td>
+                                        <td className="p-3 text-center text-gray-700">{row.sc}</td>
+                                        <td className="p-3 text-center text-gray-700">{row.st}</td>
                                       </tr>
                                     ))}
                                   </tbody>
